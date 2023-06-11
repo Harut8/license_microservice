@@ -10,9 +10,9 @@ async def fetch_row_transaction(query, *args):
         async with connection.acquire() as db:
             async with db.transaction():
                 if args:
-                    info = await connection.fetchrow(query, *args)
+                    info = await db.fetchrow(query, *args)
                 else:
-                    info = await connection.fetchrow(query)
+                    info = await db.fetchrow(query)
     return info
 
 
@@ -21,9 +21,9 @@ async def execute_delete_query(query, *args):
         async with connection.acquire() as db:
             async with db.transaction():
                 if args:
-                    info = await connection.execute(query, *args)
+                    info = await db.execute(query, *args)
                 else:
-                    info = await connection.execute(query)
+                    info = await db.execute(query)
 
 
 async def insert_row_transaction(query, *args):
@@ -32,10 +32,10 @@ async def insert_row_transaction(query, *args):
         async with connection.acquire() as db:
             async with db.transaction():
                 if args:
-                    await connection.execute(query, *args)
+                    await db.execute(query, *args)
                     return 1
                 else:
-                    await connection.execute(query)
+                    await db.execute(query)
                     return 1
 
 
@@ -58,7 +58,8 @@ class DbConnection(DbConnectionInterface):
             __passwd: str = self._parser.passwd
             __dsn = "postgres://"+__username+":"+__passwd+"@"+__host+":5432"+"/"+__db
             self.connection = await asyncpg.pool.create_pool(
-                dsn=__dsn
+                dsn=__dsn,
+
             )
         except Exception as e:
             print(e)

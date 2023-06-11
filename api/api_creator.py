@@ -1,10 +1,11 @@
 from fastapi import FastAPI, Request
-from api.user_api import user_router
+from api.license_api import license_router
 from uvicorn import run
 from repository.core.core import DbConnection
 
+
 app = FastAPI(version="1.0.0")
-app.include_router(user_router, prefix="/api/v1")
+app.include_router(license_router, prefix="/api/v1")
 
 
 @app.on_event("startup")
