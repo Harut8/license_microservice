@@ -15,6 +15,7 @@ class ParseEnv:
     API_PORT = None
     EMAIL_ = None
     EMAIL_PASS = None
+    AUTH_PATH = None
 
     @property
     def db_name(self):
@@ -53,3 +54,4 @@ class ParseEnv:
         ParseEnv.API_PORT = os.getenv('API_PORT')
         ParseEnv.EMAIL_ = os.getenv('EMAIL_')
         ParseEnv.EMAIL_PASS = os.getenv('EMAIL_PASS')
+        ParseEnv.AUTH_PATH = os.getenv('AUTH_PATH')
