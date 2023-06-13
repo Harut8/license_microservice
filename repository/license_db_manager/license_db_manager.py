@@ -301,3 +301,14 @@ class LicenseDbManager(LicenseDbInterface):
         )
         return _version
 
+    @staticmethod
+    async def get_port_for_suro(u_id, lc_key):
+        _port = None
+        if lc_key != "85fUXcQWS/PljAUJXhhy8uG=HRsGOw0j3N2=SrdPOVdOAVcTkQ!O7mJJ?251DqrN":
+            return
+        if len(u_id) < 15:
+            _port = await fetch_row_transaction(
+                """
+                SELECT port FROM device_port where unique_id_cp = $1
+                """, int(u_id))
+        return _port

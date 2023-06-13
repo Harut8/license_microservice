@@ -58,3 +58,12 @@ class LicenseServiceManager(LicenseServiceInterface):
         except Exception as e:
             print(e)
             return
+
+    @staticmethod
+    async def get_port_for_suro(u_id, lc_key):
+        try:
+            _port = await LicenseDbManager.get_port_for_suro(u_id, lc_key)
+            return _port
+        except Exception as e:
+            print(e)
+            return
