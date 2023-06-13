@@ -43,7 +43,7 @@ class LicenseDbManager(LicenseDbInterface):
         return _is_license_expire
 
     @staticmethod
-    async def add_new_license(device_code, product_id, license_key, unique_code):
+    async def _add_new_license(device_code, product_id, license_key, unique_code):
         async with DbConnection() as connection:
             async with connection.acquire() as db:
                 async with db.transaction():
@@ -100,56 +100,98 @@ class LicenseDbManager(LicenseDbInterface):
                             'license_key': license_key}
 
     @staticmethod
-    async def web_manager_license(_is_license_expire, unique_code, device_code):
-        if not _is_license_expire:
-            #  check are there any license for web
+    async def web_manager_license(
+            _is_not_license_expire,
+            unique_code,
+            device_code,
+            product_id
+    ):
+        #  can add license
+        #  cant add license
+        _web_license_key = await fetch_row_transaction(
+            """
+            SELECT license_key AS device_license_key 
+            FROM licenses l
+            JOIN device_info di on l.license_key = di.device_license_key 
+            WHERE unique_id_cp = $1 
+            AND product_id_fk = 3
+            AND device_code = $2 
+            LIMIT 1;""",
+            unique_code,
+            device_code
+        )
+
+        if _web_license_key:
+            #  return existing license if use same device
+            _license_key = _web_license_key["device_license_key"]
+            _port_ip_key = await fetch_row_transaction(
+                """
+                select own_port::int as port, own_ip from device_port dp,licenses
+                where license_key = $1 and dp.unique_id_cp = $2
+                """,
+                _license_key,
+                unique_code
+            )
+            return {
+                "port": _port_ip_key["port"],
+                "ip": _port_ip_key["own_ip"],
+                "license_key": _license_key}
+
+        if _is_not_license_expire:
+            #  add license if new device
+            _license_key = token_hex(32)
+            _web_license = await LicenseDbManager._add_new_license(
+                device_code,
+                product_id,
+                _license_key,
+                unique_code
+            )
+            return _web_license
+
+        elif not _is_not_license_expire:
+            #  get random license from existing licenses
             _web_random_license_key = await fetch_row_transaction(
                 """
                 SELECT license_key AS device_license_key 
-                FROM licenses 
+                FROM licenses l
                 WHERE unique_id_cp = $1 
-                AND product_id_fk = 3 
-                ORDER BY RANDOM() 
+                AND product_id_fk = 3
+                ORDER BY RANDOM()
                 LIMIT 1;""",
                 unique_code
             )
-            if not _web_random_license_key:
-                _license_key = token_hex(32)
-                #  add license
-                ...
-            else:
-                # update existing license code for web
-                _license_key = _web_random_license_key["license_key"]
-                async with DbConnection() as connection:
-                    async with connection.acquire() as db:
-                        async with db.transaction():
-                            await db.execute(
-                                """
-                                update device_info
-                                set device_code=%(device_code)s where
-                                device_license_key = $1;""",
-                                _license_key
-                            )
-                            await db.execute(
-                                """
-                                update uniqunes_product set device_code = $1
-                                where u_license_key = $2;
-                                """,
-                                device_code,
-                                _license_key
-                            )
-                            _port_ip_key = await db.fetchrow(
-                                """
-                                select own_port::int as port, own_ip from device_port dp,licenses
-                                where license_key = $1 and dp.unique_id_cp = $2
-                                """,
-                                _license_key,
-                                unique_code
-                            )
-                            return {
-                                "port": _port_ip_key["port"],
-                                "ip": _port_ip_key["own_ip"],
-                                "license_key": _license_key}
+            _license_key = _web_random_license_key["device_license_key"]
+            async with DbConnection() as connection:
+                async with connection.acquire() as db:
+                    async with db.transaction():
+                        await db.execute(
+                            """
+                            update device_info
+                            set device_code=$2 where
+                            device_license_key = $1;""",
+                            _license_key,
+                            device_code
+                        )
+                        await db.execute(
+                            """
+                            update uniqunes_product set device_code = $1
+                            where u_license_key = $2;
+                            """,
+                            device_code,
+                            _license_key
+                        )
+                        _port_ip_key = await db.fetchrow(
+                            """
+                            select own_port::int as port, own_ip from device_port dp,licenses
+                            where license_key = $1 and dp.unique_id_cp = $2
+                            """,
+                            _license_key,
+                            unique_code
+                        )
+                        return {
+                            "port": _port_ip_key["port"],
+                            "ip": _port_ip_key["own_ip"],
+                            "license_key": _license_key}
 
         else:
             return

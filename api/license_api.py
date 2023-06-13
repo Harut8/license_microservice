@@ -15,8 +15,10 @@ async def license_ping():
 
 @license_router.post("/addlicense")
 async def add_license(add_license_info: AddLicenseModel):
-    x = await LicenseServiceManager.add_license(add_license_info)
-    return x
+    _license_info = await LicenseServiceManager.add_license(add_license_info)
+    if _license_info:
+        return _license_info
+    return HTTPException(404)
 
 
 @license_router.post("/checklicense")
