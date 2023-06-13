@@ -13,7 +13,7 @@ async def license_ping():
     return {"status": "LICENSE PINGING"}
 
 
-@license_router.post("/addlicense")
+@license_router.post("/add-license")
 async def add_license(add_license_info: AddLicenseModel):
     _license_info = await LicenseServiceManager.add_license(add_license_info)
     if _license_info:
@@ -21,6 +21,9 @@ async def add_license(add_license_info: AddLicenseModel):
     return HTTPException(404)
 
 
-@license_router.post("/checklicense")
+@license_router.post("/check-license")
 async def check_license(check_license_info: CheckLicenseModel):
-    ...
+    _port_ip_state = await LicenseServiceManager.check_license(check_license_info)
+    if not _port_ip_state:
+        HTTPException(404)
+    return _port_ip_state

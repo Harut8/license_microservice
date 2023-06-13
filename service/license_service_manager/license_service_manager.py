@@ -25,16 +25,13 @@ class LicenseServiceManager(LicenseServiceInterface):
                 )
                 return _web_license
             else:
-                if _license_state:
-                    _other_license = await LicenseDbManager.other_platform_license(
+                _other_license = await LicenseDbManager.other_platform_license(
                         _license_state,
                         add_license_info.unique_code,
                         add_license_info.device_code,
                         add_license_info.product_id
                     )
-                    return _other_license
-                else:
-                    return
+                return _other_license
 
         except Exception as e:
             print(e)
@@ -42,5 +39,14 @@ class LicenseServiceManager(LicenseServiceInterface):
 
     @staticmethod
     async def check_license(check_license_info: CheckLicenseModel):
-        ...
+        try:
+            _port_ip_state = await LicenseDbManager.check_license(
+                license_key=check_license_info.license_key,
+                device_code=check_license_info.device_code,
+                product_id=check_license_info.product_id
+            )
+            return _port_ip_state
+        except Exception as e:
+            print(e)
+            return
 

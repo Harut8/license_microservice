@@ -85,7 +85,7 @@ class LicenseDbManager(LicenseDbInterface):
                     """, unique_code)
 
                     _port = res["port"]
-                    _ip = res["ip_of_client"][product_id-1]
+                    _ip = res["ip_of_client"][product_id - 1]
                     if not _port and not _ip:
                         return
                     await db.execute(
@@ -119,6 +119,24 @@ class LicenseDbManager(LicenseDbInterface):
         )
 
     @staticmethod
+    async def _get_port_ip(
+            _license_key,
+            unique_code
+    ):
+        _port_ip_key = await fetch_row_transaction(
+            """
+            select own_port::int as port, own_ip from device_port dp,licenses
+            where license_key = $1 and dp.unique_id_cp = $2
+            """,
+            _license_key,
+            unique_code
+        )
+        return {
+            "port": _port_ip_key["port"],
+            "ip": _port_ip_key["own_ip"],
+            "license_key": _license_key}
+
+    @staticmethod
     async def web_manager_license(
             _is_not_license_expire,
             unique_code,
@@ -127,7 +145,7 @@ class LicenseDbManager(LicenseDbInterface):
     ):
         #  can add license
         #  cant add license
-        _web_license_key = await LicenseDbManager._check_exists_device_license(unique_code,device_code,product_id)
+        _web_license_key = await LicenseDbManager._check_exists_device_license(unique_code, device_code, product_id)
 
         if _web_license_key:
             #  return existing license if use same device
@@ -188,18 +206,8 @@ class LicenseDbManager(LicenseDbInterface):
                             device_code,
                             _license_key
                         )
-                        _port_ip_key = await db.fetchrow(
-                            """
-                            select own_port::int as port, own_ip from device_port dp,licenses
-                            where license_key = $1 and dp.unique_id_cp = $2
-                            """,
-                            _license_key,
-                            unique_code
-                        )
-                        return {
-                            "port": _port_ip_key["port"],
-                            "ip": _port_ip_key["own_ip"],
-                            "license_key": _license_key}
+                        _port_ip = await LicenseDbManager._get_port_ip(_license_key, unique_code)
+                        return _port_ip
 
         else:
             return
@@ -219,20 +227,7 @@ class LicenseDbManager(LicenseDbInterface):
         if _other_license_key:
             #  device exists
             _license_key = _other_license_key["device_license_key"]
-            _port_ip_key = await fetch_row_transaction(
-                """
-                select own_port::int as port, own_ip from device_port dp,licenses
-                where license_key = $1 and dp.unique_id_cp = $2
-                """,
-                _license_key,
-                unique_code
-            )
-            return {
-                "port": _port_ip_key["port"],
-                "ip": _port_ip_key["own_ip"],
-                "license_key": _license_key}
-        if _is_not_license_expire:
-            _license_key = token_hex(32)
+            _port_ip = LicenseDbManager._get_port_ip(_license_key,unique_code)
             _other_license = await LicenseDbManager._add_new_license(
                 device_code,
                 product_id,
@@ -243,9 +238,57 @@ class LicenseDbManager(LicenseDbInterface):
         else:
             return
 
+    @staticmethod
+    async def _check_license_date(
+            license_key,
+            device_code,
+            product_id
+    ):
+        async with DbConnection() as connection:
+            async with connection.acquire() as db:
+                async with db.transaction():
+                    _license_date_is_ok = await db.fetchrow(
+                        """
+                        with cte as (
+                        SELECT ct.end_license::date > current_date as date_state 
+                        FROM client_tarif ct 
+                        JOIN company c ON ct.c_t_id = c.c_id 
+                        JOIN licenses l ON c.c_unique_id  = l.unique_id_cp 
+                        JOIN device_info di ON l.license_key = di.device_license_key 
+                        WHERE l.license_key = $1
+                        AND di.device_code = $2 and product_id_fk = $3)
+                        select * from cte where exists (select * from cte) limit 1;
+                        """,
+                        license_key,
+                        device_code,
+                        product_id)
+                    if _license_date_is_ok:
+                        return _license_date_is_ok["date_state"]
+                    return
 
     @staticmethod
     async def check_license(license_key,
                             device_code,
                             product_id):
-        ...
+        """
+        :param license_key:
+        :param device_code:
+        :param product_id:
+        :return:
+        """
+        _license_date = await LicenseDbManager._check_license_date(license_key,device_code,product_id)
+        print(_license_date)
+        if _license_date:
+            _unique_code = await fetch_row_transaction(
+                """select unique_id_cp from licenses where license_key = $1""",
+                license_key)
+            _unique_code = _unique_code["unique_id_cp"]
+            _port_ip = await LicenseDbManager._get_port_ip(license_key, _unique_code)
+            return {'state': True, 'ip': _port_ip['ip'], 'port': _port_ip['port']}
+        elif _license_date is False:
+            # need to renewal
+            return {'state': False}
+        else:
+            # need to buy
+            return {'state': 0}
+
