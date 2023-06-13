@@ -11,12 +11,12 @@ class LicenseServiceManager(LicenseServiceInterface):
     @staticmethod
     async def add_license(add_license_info: AddLicenseModel):
         try:
+            _license_state = await LicenseDbManager.check_license_state(
+                unique_code=add_license_info.unique_code,
+                product_id=add_license_info.product_id
+            )
+            _license_state = _license_state['state_of_license']
             if add_license_info.product_id == 3:
-                _license_state = await LicenseDbManager.check_license_state(
-                    unique_code=add_license_info.unique_code,
-                    product_id=add_license_info.product_id
-                )
-                _license_state = _license_state['state_of_license']
                 _web_license = await LicenseDbManager.web_manager_license(
                     _license_state,
                     add_license_info.unique_code,
@@ -24,6 +24,18 @@ class LicenseServiceManager(LicenseServiceInterface):
                     add_license_info.product_id
                 )
                 return _web_license
+            else:
+                if _license_state:
+                    _other_license = await LicenseDbManager.other_platform_license(
+                        _license_state,
+                        add_license_info.unique_code,
+                        add_license_info.device_code,
+                        add_license_info.product_id
+                    )
+                    return _other_license
+                else:
+                    return
+
         except Exception as e:
             print(e)
             return
