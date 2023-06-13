@@ -292,3 +292,12 @@ class LicenseDbManager(LicenseDbInterface):
             # need to buy
             return {'state': 0}
 
+    @staticmethod
+    async def version(product_id, device_type):
+        _version = await fetch_row_transaction(
+            """SELECT versions FROM device_version WHERE device_type = $1 and product_id = $2""",
+            device_type,
+            product_id
+        )
+        return _version
+

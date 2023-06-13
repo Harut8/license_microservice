@@ -1,4 +1,14 @@
-from pydantic import BaseModel, Field
+from typing import Union
+
+from pydantic import BaseModel, Field, validator
+from enum import Enum
+
+
+class DeviceType(Enum):
+    android = 'android'
+    ios = 'ios'
+    windows = 'windows'
+    linux = 'linux'
 
 
 class AddLicenseModel(BaseModel):
@@ -20,3 +30,9 @@ class GetLicenseType(BaseModel):
 class GetPortForSuro(BaseModel):
     u_id: str
     lc_key: str
+
+
+class Version(BaseModel):
+    product_id: int = Field(gt=0, le=4)
+
+

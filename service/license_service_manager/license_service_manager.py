@@ -50,3 +50,11 @@ class LicenseServiceManager(LicenseServiceInterface):
             print(e)
             return
 
+    @staticmethod
+    async def version(product_id, device_type):
+        try:
+            _version = await LicenseDbManager.version(product_id, device_type)
+            return _version
+        except Exception as e:
+            print(e)
+            return
