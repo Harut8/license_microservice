@@ -15,6 +15,9 @@ class LicenseServiceManager(LicenseServiceInterface):
                 unique_code=add_license_info.unique_code,
                 product_id=add_license_info.product_id
             )
+            _license_date = _license_state['license_date']
+            if not _license_date:
+                return
             _license_state = _license_state['state_of_license']
             if add_license_info.product_id == 3:
                 _web_license = await LicenseDbManager.web_manager_license(

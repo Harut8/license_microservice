@@ -24,23 +24,32 @@ class LicenseDbManager(LicenseDbInterface):
         """DIVIDE TO CHECK_LICENSE_STATE, WEB_LICENSE AND OTHER"""
         _is_not_license_expire = await fetch_row_transaction(
             f"""select
-        case
-        when(
-              sum({product_id_table[product_id]}) -
-             (select count(product_id_fk) from licenses l where product_id_fk = $2 and unique_id_cp = $1 )) > 0
-        then
-        true
-        else false
-        end
-        as state_of_license
-        from
+            case
+            when(
+                  sum({product_id_table[product_id]}) -
+                 (select count(product_id_fk) from licenses l where product_id_fk = $2 and unique_id_cp = $1 )) > 0
+            then
+            true
+            else false
+            end
+            as state_of_license,
+            (select true in
+        (select order_state and ct.start_license<ct.end_license from
         saved_order_and_tarif soat
-        where
-        company_id = (select c_id from company c where c_unique_id = $1) and order_state = true;""",
+        join client_tarif ct
+        on ct.c_t_id = soat.company_id)) as license_date
+            from
+            saved_order_and_tarif soat
+            join client_tarif ct
+            on ct.c_t_id = soat.company_id
+            where
+            company_id = (select c_id from company c where c_unique_id = $1)
+            and order_state = true and ct.start_license<ct.end_license;""",
             unique_code,
             product_id
         )
         return _is_not_license_expire
+
 
     @staticmethod
     async def _add_new_license(device_code, product_id, license_key, unique_code):
@@ -146,7 +155,6 @@ class LicenseDbManager(LicenseDbInterface):
         #  can add license
         #  cant add license
         _web_license_key = await LicenseDbManager._check_exists_device_license(unique_code, device_code, product_id)
-
         if _web_license_key:
             #  return existing license if use same device
             _license_key = _web_license_key["device_license_key"]
@@ -219,6 +227,7 @@ class LicenseDbManager(LicenseDbInterface):
             device_code,
             product_id
     ):
+
         _other_license_key = await LicenseDbManager._check_exists_device_license(
             unique_code,
             device_code,
@@ -227,7 +236,12 @@ class LicenseDbManager(LicenseDbInterface):
         if _other_license_key:
             #  device exists
             _license_key = _other_license_key["device_license_key"]
-            _port_ip = LicenseDbManager._get_port_ip(_license_key,unique_code)
+            _port_ip = await LicenseDbManager._get_port_ip(_license_key,unique_code)
+            return _port_ip
+        elif not _is_not_license_expire:
+            return
+        else:
+            _license_key = token_hex(32)
             _other_license = await LicenseDbManager._add_new_license(
                 device_code,
                 product_id,
@@ -235,8 +249,6 @@ class LicenseDbManager(LicenseDbInterface):
                 unique_code
             )
             return _other_license
-        else:
-            return
 
     @staticmethod
     async def _check_license_date(

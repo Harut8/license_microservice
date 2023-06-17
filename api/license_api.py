@@ -10,7 +10,7 @@ async def license_ping():
     return {"status": "LICENSE PINGING"}
 
 
-@license_router.post("/add-license")
+@license_router.post("/add-device")
 async def add_license(add_license_info: AddLicenseModel):
     _license_info = await LicenseServiceManager.add_license(add_license_info)
     if _license_info:

@@ -13,18 +13,18 @@ class DeviceType(Enum):
 
 class AddLicenseModel(BaseModel):
     unique_code: int
-    device_code: str
+    device_code: str = Field(regex=r'^[a-zA-Z0-9\/-_]+$')
     product_id: int = Field(gt=0, le=4)
 
 
 class CheckLicenseModel(BaseModel):
-    license_key: str
-    device_code: str
+    license_key: str = Field(regex=r'^[a-zA-Z0-9\/-_]+$')
+    device_code: str = Field(regex=r'^[a-zA-Z0-9\/-_]+$')
     product_id: int = Field(gt=0, le=4)
 
 
 class GetLicenseType(BaseModel):
-    license_key: str
+    license_key: str = Field(regex=r'^[a-zA-Z0-9\/-_]+$')
 
 
 class GetPortForSuro(BaseModel):
