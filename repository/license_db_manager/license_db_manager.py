@@ -50,7 +50,6 @@ class LicenseDbManager(LicenseDbInterface):
         )
         return _is_not_license_expire
 
-
     @staticmethod
     async def _add_new_license(device_code, product_id, license_key, unique_code):
         async with DbConnection() as connection:
@@ -289,7 +288,6 @@ class LicenseDbManager(LicenseDbInterface):
         :return:
         """
         _license_date = await LicenseDbManager._check_license_date(license_key,device_code,product_id)
-        print(_license_date)
         if _license_date:
             _unique_code = await fetch_row_transaction(
                 """select unique_id_cp from licenses where license_key = $1""",
